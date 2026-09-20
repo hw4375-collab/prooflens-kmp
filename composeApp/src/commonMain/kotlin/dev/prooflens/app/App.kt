@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.LaunchedEffect
@@ -54,14 +55,18 @@ fun App(viewModel: AppViewModel = remember { AppViewModel() }) {
                     TopAppBar(
                         title = {
                             Column {
-                                Text("ProofLens")
+                                Text("ProofLens", style = MaterialTheme.typography.titleLarge)
                                 Text(
                                     "AI proposes. Lean decides.",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                                 )
                             }
                         },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
                     )
                 },
             ) { padding ->

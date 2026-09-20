@@ -16,8 +16,8 @@ import dev.prooflens.shared.model.Verdict
 @Composable
 fun VerdictBadge(verdict: Verdict) {
     val (color, glyph) = when (verdict) {
-        Verdict.VERIFIED -> Color(0xFF1B8A5A) to "✓"
-        Verdict.REFUTED -> Color(0xFFC62828) to "✗"
+        Verdict.VERIFIED -> Color(0xFF1B8A5A) to "OK"
+        Verdict.REFUTED -> Color(0xFFC62828) to "NO"
         Verdict.UNVERIFIED -> Color(0xFFB26A00) to "?"
         Verdict.ERROR -> MaterialTheme.colorScheme.outline to "!"
     }

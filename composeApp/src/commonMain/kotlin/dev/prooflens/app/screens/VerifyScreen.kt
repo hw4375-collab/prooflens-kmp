@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.graphics.Color
+import dev.prooflens.shared.model.Verdict
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -61,7 +64,16 @@ fun VerifyScreen(state: AppState, viewModel: AppViewModel) {
             Text(state.attemptsInProgress, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
         }
         state.result?.let { response ->
-            Card(Modifier.fillMaxWidth()) {
+            val tint = when (response.verdict) {
+                Verdict.VERIFIED -> Color(0xFFE3F6EC)
+                Verdict.REFUTED -> Color(0xFFFDE7E7)
+                Verdict.UNVERIFIED -> Color(0xFFFFF3DF)
+                Verdict.ERROR -> androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant
+            }
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = tint, contentColor = Color(0xFF1B1B2F)),
+            ) {
                 Column(
                     Modifier.fillMaxWidth().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
