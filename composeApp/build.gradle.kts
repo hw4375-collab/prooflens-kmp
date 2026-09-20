@@ -8,6 +8,10 @@ plugins {
 kotlin {
     androidTarget()
     jvm("desktop")
+    wasmJs {
+        browser()
+        binaries.executable()
+    }
     sourceSets {
         commonMain.dependencies {
             implementation(project(":shared"))
@@ -21,6 +25,9 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.activityCompose)
+        }
+        named("desktopMain").dependencies {
+            implementation("org.jetbrains.skiko:skiko-awt-runtime-linux-x64:0.9.4.2")
         }
     }
 }

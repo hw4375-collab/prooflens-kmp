@@ -7,6 +7,10 @@ plugins {
 kotlin {
     androidTarget()
     jvm()
+    wasmJs {
+        browser()
+        binaries.executable()
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -21,6 +25,9 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.ktorClientOkhttp)
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.ktorClientJs)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

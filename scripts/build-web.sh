@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "Wasm build disabled in this VM: Kotlin Web dependencies require unavailable Maven Central artifacts."
-echo "Android and Desktop targets remain available."
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIST_DIR="${1:-$ROOT_DIR/composeApp/build/dist/wasmJs/productionExecutable}"
+
+"$ROOT_DIR/gradlew" :composeApp:wasmJsBrowserDistribution
+echo "Wasm distribution: $DIST_DIR"
+echo "Serve with: python3 -m http.server 8081 -d $DIST_DIR"
