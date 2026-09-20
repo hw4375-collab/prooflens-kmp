@@ -60,6 +60,15 @@ data class CheckResponse(
 )
 
 @Serializable
+data class ChatMessage(val role: String, val content: String)
+
+@Serializable
+data class ChatRequest(val messages: List<ChatMessage>)
+
+@Serializable
+data class ChatResponse(val reply: String, val claim: String?, val check: CheckResponse?)
+
+@Serializable
 data class HistoryItem(
     val id: String,
     val claim: String,

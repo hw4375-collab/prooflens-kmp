@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import dev.prooflens.app.screens.HistoryScreen
+import dev.prooflens.app.screens.ChatScreen
 import dev.prooflens.app.screens.LearnScreen
 import dev.prooflens.app.screens.SettingsScreen
 import dev.prooflens.app.screens.VerifyScreen
@@ -94,6 +95,7 @@ private fun content(state: dev.prooflens.app.state.AppState, viewModel: AppViewM
     ) {
         when (state.tab) {
             AppTab.VERIFY -> VerifyScreen(state, viewModel)
+            AppTab.CHAT -> ChatScreen(state, viewModel)
             AppTab.LEARN -> LearnScreen(state, viewModel)
             AppTab.HISTORY -> HistoryScreen(state, viewModel)
             AppTab.SETTINGS -> SettingsScreen(state, viewModel)
@@ -106,6 +108,7 @@ private fun tabs(state: dev.prooflens.app.state.AppState, viewModel: AppViewMode
     AppTab.entries.forEach { tab ->
         val icon = when (tab) {
             AppTab.VERIFY -> "✓"
+            AppTab.CHAT -> "💬"
             AppTab.LEARN -> "▣"
             AppTab.HISTORY -> "↺"
             AppTab.SETTINGS -> "⚙"

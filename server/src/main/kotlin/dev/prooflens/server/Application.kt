@@ -3,6 +3,9 @@ package dev.prooflens.server
 import dev.prooflens.shared.model.CheckAttempt
 import dev.prooflens.shared.model.CheckRequest
 import dev.prooflens.shared.model.CheckResponse
+import dev.prooflens.shared.model.ChatRequest
+import dev.prooflens.shared.model.ChatResponse
+import dev.prooflens.shared.model.Diagnostic
 import dev.prooflens.shared.model.FormalizeRequest
 import dev.prooflens.shared.model.HealthResponse
 import dev.prooflens.shared.model.Verdict
@@ -58,18 +61,8 @@ fun Application.module(
         }
         post("/check") {
             val request = call.receive<CheckRequest>()
-            val attempts = mutableListOf<CheckAttempt>()
-            var previousLean: String? = null
-            var previousErrors = emptyList<dev.prooflens.shared.model.Diagnostic>()
             try {
-                for (index in 0 until request.maxAttempts.coerceIn(1, 3)) {
-                    val formalized = formalizer.formalize(FormalizeRequest(request.claim, previousLean, previousErrors))
-                    val verify = leanRunner.verify(formalized.lean)
-                    attempts += CheckAttempt(index + 1, formalized.lean, formalized.explanation, verify, formalized.provesNegation)
-                    if (verify.ok) break
-                    previousLean = formalized.lean
-                    previousErrors = verify.diagnostics
-                }
+                call.respond(runCheck(request.claim, request.maxAttempts, formalizer, leanRunner))
             } catch (e: MissingOpenAiKeyException) {
                 call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to e.message))
                 return@post
@@ -77,18 +70,48 @@ fun Application.module(
                 call.respond(HttpStatusCode.BadGateway, mapOf("error" to (e.message ?: "Formalization failed")))
                 return@post
             }
-            val final = attempts.lastOrNull()
-            val verdict = when {
-                final == null -> Verdict.UNVERIFIED
-                final.verify.ok && final.provesNegation -> Verdict.REFUTED
-                final.verify.ok -> Verdict.VERIFIED
-                else -> Verdict.UNVERIFIED
+        }
+        post("/chat") {
+            try {
+                val (reply, claim) = formalizer.chatWithClaim(call.receive<ChatRequest>().messages)
+                val check = claim?.takeIf { it.isNotBlank() }?.let {
+                    runCheck(it, 3, formalizer, leanRunner)
+                }
+                call.respond(ChatResponse(reply, claim, check))
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Chat failed")))
             }
-            call.respond(CheckResponse(request.claim, verdict, attempts, when (verdict) {
-                Verdict.VERIFIED -> "Lean accepted the proposed proof."
-                Verdict.REFUTED -> "Lean accepted a proof of the negation."
-                else -> "Lean could not verify the claim within the attempt limit."
-            }))
         }
     }
+}
+
+suspend fun runCheck(
+    claim: String,
+    maxAttempts: Int,
+    formalizer: OpenAiFormalizer,
+    leanRunner: LeanRunner,
+): CheckResponse {
+    val attempts = mutableListOf<CheckAttempt>()
+    var previousLean: String? = null
+    var previousErrors = emptyList<Diagnostic>()
+    for (index in 0 until maxAttempts.coerceIn(1, 3)) {
+        val formalized = formalizer.formalize(FormalizeRequest(claim, previousLean, previousErrors))
+        val verify = leanRunner.verify(formalized.lean)
+        attempts += CheckAttempt(index + 1, formalized.lean, formalized.explanation, verify, formalized.provesNegation)
+        if (verify.ok) break
+        previousLean = formalized.lean
+        previousErrors = verify.diagnostics
+    }
+    val final = attempts.lastOrNull()
+    val verdict = when {
+        final == null -> Verdict.UNVERIFIED
+        final.verify.ok && final.provesNegation -> Verdict.REFUTED
+        final.verify.ok -> Verdict.VERIFIED
+        else -> Verdict.UNVERIFIED
+    }
+    return CheckResponse(claim, verdict, attempts, when (verdict) {
+        Verdict.VERIFIED -> "Lean accepted the proposed proof."
+        Verdict.REFUTED -> "Lean accepted a proof of the negation."
+        else -> "Lean could not verify the claim within the attempt limit."
+    })
 }

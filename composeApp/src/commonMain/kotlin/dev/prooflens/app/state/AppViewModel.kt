@@ -5,6 +5,9 @@ import dev.prooflens.shared.demo.demoExamples
 import dev.prooflens.shared.demo.demoForClaim
 import dev.prooflens.shared.model.CheckRequest
 import dev.prooflens.shared.model.CheckResponse
+import dev.prooflens.shared.model.ChatMessage
+import dev.prooflens.shared.model.ChatRequest
+import dev.prooflens.shared.model.ChatResponse
 import dev.prooflens.shared.model.HistoryItem
 import dev.prooflens.shared.model.Lesson
 import dev.prooflens.shared.model.Verdict
@@ -20,7 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-enum class AppTab { VERIFY, LEARN, HISTORY, SETTINGS }
+enum class AppTab { VERIFY, CHAT, LEARN, HISTORY, SETTINGS }
 
 expect fun defaultServerUrl(): String
 
@@ -40,6 +43,10 @@ data class AppState(
     val selectedLesson: Lesson? = null,
     val lessonEditor: String = "",
     val lessonLoading: Boolean = false,
+    val chat: List<ChatMessage> = emptyList(),
+    val chatChecks: Map<Int, ChatResponse> = emptyMap(),
+    val chatInput: String = "",
+    val chatLoading: Boolean = false,
 )
 
 class AppViewModel {
@@ -49,6 +56,7 @@ class AppViewModel {
 
     fun selectTab(tab: AppTab) { _state.value = _state.value.copy(tab = tab) }
     fun setClaim(claim: String) { _state.value = _state.value.copy(claim = claim) }
+    fun setChatInput(input: String) { _state.value = _state.value.copy(chatInput = input) }
     fun setDemoMode(enabled: Boolean) { _state.value = _state.value.copy(demoMode = enabled) }
     fun setServerUrl(url: String) {
         _state.value = _state.value.copy(serverUrl = url)
@@ -123,6 +131,29 @@ class AppViewModel {
                     .getOrElse { VerifyResponse(false, emptyList(), it.message ?: "Request failed", 0) }
             }
             _state.value = _state.value.copy(lessonResult = result, lessonLoading = false)
+        }
+    }
+
+    fun sendChat() {
+        val current = _state.value
+        if (current.chatInput.isBlank() || current.chatLoading) return
+        val userMessage = ChatMessage("user", current.chatInput.trim())
+        val messages = current.chat + userMessage
+        _state.value = current.copy(chat = messages, chatInput = "", chatLoading = true)
+        scope.launch {
+            val response = if (current.demoMode) {
+                null
+            } else {
+                runCatching { ProofLensApi(current.serverUrl).chat(ChatRequest(messages)) }.getOrNull()
+            }
+            val assistant = response?.reply ?: "(offline) I can't reach the server."
+            val withAssistant = messages + ChatMessage("assistant", assistant)
+            _state.value = _state.value.copy(
+                chat = withAssistant,
+                chatChecks = response?.let { _state.value.chatChecks + (withAssistant.lastIndex to it) }
+                    ?: _state.value.chatChecks,
+                chatLoading = false,
+            )
         }
     }
 

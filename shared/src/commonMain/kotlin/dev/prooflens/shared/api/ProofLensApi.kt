@@ -2,6 +2,8 @@ package dev.prooflens.shared.api
 
 import dev.prooflens.shared.model.CheckRequest
 import dev.prooflens.shared.model.CheckResponse
+import dev.prooflens.shared.model.ChatRequest
+import dev.prooflens.shared.model.ChatResponse
 import dev.prooflens.shared.model.FormalizeRequest
 import dev.prooflens.shared.model.FormalizeResponse
 import dev.prooflens.shared.model.HealthResponse
@@ -40,6 +42,12 @@ class ProofLensApi(
 
     suspend fun check(request: CheckRequest): CheckResponse =
         client.post("$baseUrl/check") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+
+    suspend fun chat(request: ChatRequest): ChatResponse =
+        client.post("$baseUrl/chat") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
