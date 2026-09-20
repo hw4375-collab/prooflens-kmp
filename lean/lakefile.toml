@@ -1,0 +1,6 @@
+name = "ProofLens"
+version = "0.1.0"
+defaultTargets = ["ProofLens"]
+
+[[lean_lib]]
+name = "ProofLens"
