@@ -31,4 +31,11 @@ to run the bundled examples without network access.
 
 ## Screenshots
 
-Screenshots will be added here.
+![Android Verify](docs/screenshots/android-verify.png)
+
+![Android Learn](docs/screenshots/android-learn.png)
+
+![Desktop Verify](docs/screenshots/desktop-verify.png)
+
+See the [hackathon pitch](docs/PITCH.md) for the demo script, architecture,
+shared-code breakdown, judging-criteria mapping, and roadmap.
