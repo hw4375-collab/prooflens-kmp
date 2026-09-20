@@ -74,7 +74,7 @@ fun App(viewModel: AppViewModel = remember { AppViewModel() }) {
                         }
                     } else {
                         Column(Modifier.fillMaxSize()) {
-                            content(state, viewModel, Modifier.fillMaxWidth())
+                            content(state, viewModel, Modifier.fillMaxWidth().weight(1f))
                             NavigationBar {
                                 tabs(state, viewModel, rail = false)
                             }
@@ -89,7 +89,7 @@ fun App(viewModel: AppViewModel = remember { AppViewModel() }) {
 @Composable
 private fun content(state: dev.prooflens.app.state.AppState, viewModel: AppViewModel, modifier: Modifier) {
     Column(
-        modifier.fillMaxSize().widthIn(max = 1080.dp).verticalScroll(rememberScrollState()).padding(20.dp),
+        modifier.widthIn(max = 1080.dp).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         when (state.tab) {
