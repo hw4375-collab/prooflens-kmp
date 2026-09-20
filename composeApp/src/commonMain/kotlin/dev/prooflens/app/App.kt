@@ -107,11 +107,11 @@ private fun content(state: dev.prooflens.app.state.AppState, viewModel: AppViewM
 private fun tabs(state: dev.prooflens.app.state.AppState, viewModel: AppViewModel, rail: Boolean) {
     AppTab.entries.forEach { tab ->
         val icon = when (tab) {
-            AppTab.VERIFY -> "✓"
-            AppTab.CHAT -> "💬"
-            AppTab.LEARN -> "▣"
-            AppTab.HISTORY -> "↺"
-            AppTab.SETTINGS -> "⚙"
+            AppTab.VERIFY -> "V"
+            AppTab.CHAT -> "C"
+            AppTab.LEARN -> "L"
+            AppTab.HISTORY -> "H"
+            AppTab.SETTINGS -> "S"
         }
         if (rail) {
             NavigationRailItem(
