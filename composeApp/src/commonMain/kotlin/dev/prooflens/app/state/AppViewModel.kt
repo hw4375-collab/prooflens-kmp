@@ -6,6 +6,7 @@ import dev.prooflens.shared.demo.demoForClaim
 import dev.prooflens.shared.model.CheckRequest
 import dev.prooflens.shared.model.CheckResponse
 import dev.prooflens.shared.model.HistoryItem
+import dev.prooflens.shared.model.Lesson
 import dev.prooflens.shared.model.Verdict
 import dev.prooflens.shared.model.VerifyRequest
 import dev.prooflens.shared.model.VerifyResponse
@@ -28,11 +29,17 @@ data class AppState(
     val claim: String = "",
     val result: CheckResponse? = null,
     val loading: Boolean = false,
-    val demoMode: Boolean = true,
+    val attemptsInProgress: String = "",
+    val demoMode: Boolean = false,
     val serverUrl: String = defaultServerUrl(),
     val health: String = "Not checked",
+    val healthOk: Boolean? = null,
+    val healthLoading: Boolean = false,
     val history: List<HistoryItem> = emptyList(),
     val lessonResult: VerifyResponse? = null,
+    val selectedLesson: Lesson? = null,
+    val lessonEditor: String = "",
+    val lessonLoading: Boolean = false,
 )
 
 class AppViewModel {
@@ -43,24 +50,52 @@ class AppViewModel {
     fun selectTab(tab: AppTab) { _state.value = _state.value.copy(tab = tab) }
     fun setClaim(claim: String) { _state.value = _state.value.copy(claim = claim) }
     fun setDemoMode(enabled: Boolean) { _state.value = _state.value.copy(demoMode = enabled) }
-    fun setServerUrl(url: String) { _state.value = _state.value.copy(serverUrl = url) }
+    fun setServerUrl(url: String) {
+        _state.value = _state.value.copy(serverUrl = url)
+        checkHealth()
+    }
+
+    fun openLesson(lesson: Lesson) {
+        _state.value = _state.value.copy(
+            selectedLesson = lesson,
+            lessonEditor = lesson.leanSnippet,
+            lessonResult = null,
+        )
+    }
+
+    fun closeLesson() {
+        _state.value = _state.value.copy(selectedLesson = null, lessonResult = null)
+    }
+
+    fun setLessonEditor(lean: String) {
+        _state.value = _state.value.copy(lessonEditor = lean)
+    }
 
     fun verifyClaim() {
         val current = _state.value
         if (current.claim.isBlank()) return
         scope.launch {
-            _state.value = current.copy(loading = true)
-            val response = if (current.demoMode) {
-                demoForClaim(current.claim) ?: CheckResponse(
-                    current.claim, Verdict.UNVERIFIED, emptyList(),
-                    "Try one of the example claims in demo mode.",
-                )
+            _state.value = current.copy(
+                loading = true,
+                attemptsInProgress = "Asking the AI to formalize… → Lean checking…",
+            )
+            val demo = demoForClaim(current.claim)
+            val response = if (current.demoMode && demo != null) {
+                demo.copy(summary = "(demo mode) ${demo.summary}")
             } else {
                 runCatching { ProofLensApi(current.serverUrl).check(CheckRequest(current.claim)) }
-                    .getOrElse {
-                        CheckResponse(current.claim, Verdict.ERROR, emptyList(), it.message ?: "Request failed")
+                    .fold(
+                        onSuccess = { it },
+                        onFailure = { error ->
+                            demo?.copy(summary = "(offline demo) ${demo.summary}") ?: CheckResponse(
+                                current.claim,
+                                Verdict.ERROR,
+                                emptyList(),
+                                error.message ?: "Request failed",
+                            )
+                        },
+                    )
                     }
-            }
             val item = HistoryItem(
                 id = "${response.claim}-${response.hashCode()}",
                 claim = response.claim,
@@ -69,28 +104,49 @@ class AppViewModel {
                 response = response,
             )
             _state.value = _state.value.copy(
-                result = response, loading = false, history = listOf(item) + current.history,
+                result = response,
+                loading = false,
+                attemptsInProgress = "",
+                history = listOf(item) + current.history,
             )
         }
     }
 
-    fun runLesson(lean: String) {
+    fun runLesson() {
+        val current = _state.value
         scope.launch {
-            val result = if (_state.value.demoMode) {
+            _state.value = current.copy(lessonLoading = true, lessonResult = null)
+            val result = if (current.demoMode) {
                 VerifyResponse(true, emptyList(), "", 10)
             } else {
-                runCatching { ProofLensApi(_state.value.serverUrl).verify(VerifyRequest(lean)) }
+                runCatching { ProofLensApi(current.serverUrl).verify(VerifyRequest(current.lessonEditor)) }
                     .getOrElse { VerifyResponse(false, emptyList(), it.message ?: "Request failed", 0) }
             }
-            _state.value = _state.value.copy(lessonResult = result)
+            _state.value = _state.value.copy(lessonResult = result, lessonLoading = false)
         }
     }
 
     fun checkHealth() {
+        val current = _state.value
         scope.launch {
-            val health = runCatching { ProofLensApi(_state.value.serverUrl).health() }
-                .fold({ "${it.status} ${it.leanVersion.orEmpty()}".trim() }, { "Unavailable: ${it.message}" })
-            _state.value = _state.value.copy(health = health)
+            _state.value = _state.value.copy(healthLoading = true)
+            runCatching { ProofLensApi(current.serverUrl).health() }
+                .fold(
+                    onSuccess = {
+                        _state.value = _state.value.copy(
+                            health = "${it.status} ${it.leanVersion.orEmpty()}".trim(),
+                            healthOk = true,
+                            healthLoading = false,
+                        )
+                    },
+                    onFailure = {
+                        _state.value = _state.value.copy(
+                            health = "Unavailable: ${it.message ?: "request failed"}",
+                            healthOk = false,
+                            healthLoading = false,
+                        )
+                    },
+                )
         }
     }
 
@@ -99,4 +155,8 @@ class AppViewModel {
     }
 
     fun close() { scope.cancel() }
+
+    init {
+        checkHealth()
+    }
 }

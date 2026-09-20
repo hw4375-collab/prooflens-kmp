@@ -25,7 +25,8 @@ export PATH="$HOME/.elan/bin:$PATH"
 ./scripts/build-web.sh
 ```
 
-The app starts in offline demo mode. Turn it off in Settings to use the server.
+The app connects to the configured server by default. Enable Demo mode in Settings
+to run the bundled examples without network access.
 `OPENAI_API_KEY` is required for `/formalize` and `/check`; `/verify` works locally with Lean.
 
 ## Screenshots

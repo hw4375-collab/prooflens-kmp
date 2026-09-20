@@ -4,14 +4,15 @@ import dev.prooflens.shared.model.Diagnostic
 import dev.prooflens.shared.model.FormalizeRequest
 import dev.prooflens.shared.model.FormalizeResponse
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -47,19 +48,34 @@ class OpenAiFormalizer {
                 add(buildJsonObject { put("role", "user"); put("content", user) })
             })
         }
-        val response: JsonObject = client.post("https://api.openai.com/v1/chat/completions") {
+        val response = client.post("https://api.openai.com/v1/chat/completions") {
             header(HttpHeaders.Authorization, "Bearer $key")
             contentType(ContentType.Application.Json)
             setBody(payload)
-        }.body()
-        val content = response["choices"]!!.jsonArray[0].jsonObject["message"]!!
+        }
+        if (!response.status.isSuccess()) {
+            throw RuntimeException(
+                "OpenAI request failed (${response.status.value}): ${response.bodyAsText()}",
+            )
+        }
+        val responseJson = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val content = responseJson["choices"]!!.jsonArray[0].jsonObject["message"]!!
             .jsonObject["content"]!!.jsonPrimitive.content
-        val parsed = Json.parseToJsonElement(content).jsonObject
+        val parsed = Json.parseToJsonElement(stripCodeFence(content)).jsonObject
         return FormalizeResponse(
-            lean = parsed["lean"]!!.jsonPrimitive.content,
+            lean = stripCodeFence(parsed["lean"]!!.jsonPrimitive.content),
             explanation = parsed["explanation"]?.jsonPrimitive?.content.orEmpty(),
             model = model,
             provesNegation = parsed["provesNegation"]?.jsonPrimitive?.content?.toBoolean() ?: false,
         )
+    }
+
+    private fun stripCodeFence(value: String): String {
+        val trimmed = value.trim()
+        if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) return trimmed
+        return trimmed
+            .substringAfter('\n', missingDelimiterValue = "")
+            .substringBeforeLast("```")
+            .trim()
     }
 }
